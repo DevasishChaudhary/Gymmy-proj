@@ -72,7 +72,7 @@ html {
 
 }
 
-.joinus {
+.joinus ,.logout{
 
     padding: 10px 10px;
     border-radius: 8px;
@@ -81,7 +81,7 @@ html {
 
 }
 
-.joinus a {
+.joinus a{
     border: 2px solid white;
     padding: 10px 10px;
     border-radius: 8px;
@@ -89,11 +89,9 @@ html {
     text-decoration: none;
     color: white;
     font-weight: bold;
-
-
 }
 
-.joinus a:hover {
+.joinus a:hover , .logout button:hover{
     padding: 10px 10px;
     border-radius: 8px;
     color: black;
@@ -109,6 +107,16 @@ html {
 
 .logout {
   display: none; /* hidden by default until token is found */
+}
+.logout button{
+    border: 2px solid white;
+    padding: 10px 10px;
+    border-radius: 8px;
+    margin: 10px 10px;
+    text-decoration: none;
+    color: white;
+    background-color: black;
+    font-weight: bold;
 }
 
 
