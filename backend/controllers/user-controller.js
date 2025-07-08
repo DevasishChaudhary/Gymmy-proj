@@ -113,8 +113,187 @@ const userLogin = async (req, res) => {
         });
     }
 }
+// getall user
+const getAllUser = async (req, res) => {
+    try {
+        const user = await User.find();
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: "User fetched successfully",
+            user,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Some error occured. Please try again",
+            error,
+        });
+    }
+};
+//get user by id
+const getUserById = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide user id",
+            });
+        }
+        const user = await User.findById(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: "User fetched successfully",
+            user,
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Some error occured. Please try again",
+            error,
+        });
+    }
+};
+//update user
+const updateUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const owner = req.user.id;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide user id",
+            });
+        }
+        if (id !== owner) {
+            return res.status(401).json({
+                success: false,
+                message: "You are not authorized to update this user",
+            });
+        }
+        const { username, email, password, role, phone, address } = req.body;
+        if (!username || !email || !password || !phone || !address) {
+            return res.status(400).json({
+                success: false,
+                message: "Please fill all the fields",
+            });
+        }
+        const user = await User.findByIdAndUpdate(id, {
+            username,
+            email,
+            password,
+            role,
+            phone,
+            address,
+        });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: "User updated successfully",
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Some error occured. Please try again",
+            error,
+        });
+    }
+};
+//delete user
+const deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide user id",
+            });
+        }
+        const user = await User.findByIdAndDelete(id);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: "User deleted successfully",
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Some error occured. Please try again",
+            error,
+        });
+    }
+};
+// make user member
+const makeUserMember = async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            return res.status(400).json({
+                success: false,
+                message: "Please provide user id",
+            });
+        }
+        const user = await User.findByIdAndUpdate(id, {
+            isMember: true,
+        });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            message: "User made member successfully",
+        });
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({
+            success: false,
+            message: "Some error occured. Please try again",
+            error,
+        });
+    }
+};  
+
+
+
+
+
 
 module.exports = {
     userRegistration,
-    userLogin
+    userLogin,
+    getAllUser,
+    getUserById,
+    updateUser,
+    deleteUser,
+    makeUserMember,
+    
 };
