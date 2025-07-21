@@ -1,23 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { userRegistration,userLogin,getAllUser,getUserById,updateUser,deleteUser,makeUserMember } = require('../controllers/user-controller');
+const { registerGymWithOwner,userLogin,getGymMembers,addUserToGym,deleteMember,editMember,getMemberById } = require('../controllers/user-controller');
 const authMiddleware = require('../middleware/auth-middleware'); // Importing the authentication middleware
 
-router.post('/register', userRegistration); // Route for user registration
-router.post('/login',userLogin); // Route for user login
-router.get('/all',authMiddleware,getAllUser); // Route for get all user
-router.get('/:id',authMiddleware,getUserById); // Route for get user by id
-router.put('/update/:id',authMiddleware,updateUser); // Route for update user
-router.delete('/delete/:id',authMiddleware,deleteUser); // Route for delete user
-router.put('/make-member/:id',authMiddleware,makeUserMember); // Route for make user member
-
-// router.get('/profile', authMiddleware, (req, res) => { // This route is protected by the authMiddleware and will return the user data after authentication.
-//     // This route is protected by the authMiddleware
-//     res.status(200).json({
-//         success: true,
-//         message: "User profile fetched successfully",
-//         user: req.user // The user data is available here after authentication
-//     });
-// });
-
-module.exports = router; // Exporting the router to use in server.js
+    router.post('/register', registerGymWithOwner); // Route for gym registration
+    router.post('/login', userLogin); // Route for user login
+    router.get('/members', authMiddleware, getGymMembers); // Route for getting gym members
+    router.post('/add-user', authMiddleware, addUserToGym); // Route for adding a user to a gym
+    router.delete('/delete-member/:id', authMiddleware, deleteMember); // Route for deleting a member
+    router.put('/edit-member/:id', authMiddleware, editMember); // Route for editing a member
+    router.get('/get-member/:id', authMiddleware, getMemberById); // Route for getting a member by id
+module.exports = router; // Exporting the router to use in server.js        

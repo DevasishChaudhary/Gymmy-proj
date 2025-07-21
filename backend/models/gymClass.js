@@ -10,28 +10,26 @@ const GymClassSchema = new mongoose.Schema({
     type: String,
     default: '',
   },
+  // thiswill be string for now but later we will use the user id
   instructor: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', // Assuming there is a User schema
-    required: true,
+   type: String,
+   required: true,
+   trim: true
   },
   location: {
     type: String,
     required: true,
+    trim: true
   },
-  schedule: {
-    date: {
-      type: Date,
-      required: true,
-    },
-    startTime: {
-      type: String, // Example: "18:00"
-      required: true,
-    },
-    endTime: {
-      type: String, // Example: "19:00"
-      required: true,
-    }
+  startTime: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  endTime: {
+    type: String,
+    required: true,
+    trim: true
   },
   capacity: {
     type: Number,

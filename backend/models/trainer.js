@@ -31,6 +31,16 @@ const trainerSchema = new mongoose.Schema({
   type: mongoose.Schema.Types.ObjectId,
   ref: "Gym",
   default: null
+},
+phone: {
+    type: String,
+    required: true,
+    trim: true
+},
+email: {
+    type: String,
+    required: true,
+    trim: true
 }
 
 }, {

@@ -44,11 +44,18 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    gym:[{
+    expiryDate: {
+      type: Date,
+      default: Date.now + 30 * 24 * 60 * 60 * 1000,//30 days
+    },
+    gym: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Gym",
-    }]
-    
+    },
+    mustResetPassword: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
@@ -56,6 +63,4 @@ const userSchema = new mongoose.Schema(
 );
 
 // Exporting both models
-const User = mongoose.model("User", userSchema);
-
-module.exports = { User, Trainer };
+module.exports = mongoose.model("User", userSchema);

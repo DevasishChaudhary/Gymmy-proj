@@ -2,17 +2,17 @@ const mongoose = require("mongoose");
 
 const GymSchema = new mongoose.Schema(
   {
-    gymName: {
+    gym_name: {
       type: String,
       required: true,
       trim: true,
     },
-    address: {
+    gym_address: {
       type: String,
       required: true,
       trim: true,
     },
-    contactNumber: {
+    gym_contactNumber: {
       type: String,
       required: true,
       trim: true,
@@ -22,30 +22,6 @@ const GymSchema = new mongoose.Schema(
       ref: "User", // Admin/owner of the gym
       required: true,
     },
-    equipments: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "GymEquipment",
-      },
-    ],
-    classes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "GymClass",
-      },
-    ],
-    trainers: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Trainer",
-      },
-    ],
-    members: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User", // Users who are members of this gym
-      },
-    ],
     openingHours: {
       type: String, // e.g., "6:00 AM - 10:00 PM"
       default: "",

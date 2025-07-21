@@ -1,299 +1,243 @@
 const User = require("../models/user");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const Gym = require("../models/gym-schema");
 
 // for user register
-const userRegistration = async (req, res) => {
-    try {
-        const { username, email, password, role, phone, address } = req.body;
-       
-        
-         if (!username || !email || !password || !phone || !address) {
-            return res.status(400).json({
-                success: false,
-                message: "Please fill all the fields",
-            });
-        }
-        // console.log(username, email, password, role, phone, address);
-        
-        const userexist = await User.findOne ({
-            $or: [{ username }, { email }]
-        });
-        if (userexist) {
-            return res.status(404).json({
-                success: false,
-                message: "A user with this username or email is alredy exist. Please try again with  different one",
-            });
+const registerGymWithOwner = async (req, res) => {
+  try {
+    const {
+      gym_name,
+      gym_address,
+      gym_contactNumber,
+      openingHours,
+      username,
+      email,
+      password,
+    } = req.body;
 
+    // 1. Check if email already exists
+    const existingUser = await User.findOne({ email: email });
+    if (existingUser)
+      return res.status(400).json({ message: "Email already in use" });
 
-        }
-       
-        const salt = await bcrypt.genSalt(10); // unique key generate garxa
-        const hashedPassword = await bcrypt.hash(password, salt); // password hash garxa
+    // 2. Create hashed password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-        //this will create a new user in the database
-        const newuser = new User({
-            username: username,
-            email:email,
-            password: hashedPassword,
-            role: role || "user",
-            phone: phone,
-            address: address,
+    // 3. Create user (without gym yet)
+    const manager = await User.create({
+      username,
+      email: email,
+      password: hashedPassword,
+      role: "admin",
+      address: gym_address,
+      phone: gym_contactNumber,
+    });
 
-        });
+    // 4. Create gym with owner reference
+    const gym = await Gym.create({
+      gym_name,
+      gym_address,
+      gym_contactNumber,
+      openingHours,
+      owner: manager._id,
+    });
 
-        await newuser.save(); // save the user in the database
+    // 5. Update manager to include gym reference
+    manager.gym = gym._id;
+    await manager.save();
 
-        return res.status(201).json({
-            success: true,
-            message: "User registered successfully",
-            user: {
-                id: newuser._id,
-                role: newuser.role,
-                username: newuser.username,
-            }
-        });
+    // 6. Create JWT token
+    const token = jwt.sign(
+      {
+        userId: manager._id,
+        gymId: gym._id,
+        role: manager.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
+    res.status(201).json({
+      message: "Gym and manager account created",
+      token,
+      user: {
+        _id: manager._id,
+        name: manager.username,
+        email: manager.email,
+        gym: gym._id,
+        role: manager.role,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error while registering gym" });
+  }
+};
 
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: "Some error occured. Please try again",
-            
+const addUserToGym = async (req, res) => {
+  try {
+    const { username, email, role,phone,address,expiryDate } = req.body;
 
-        });
-    }
-}
+    // Get gymId from the manager/admin's JWT
+    const gymId = req.user.gymId;
 
-//login user
-// this function will login the user
+    const existingUser = await User.findOne({ email: email });
+    if (existingUser)
+      return res.status(400).json({ message: "Email already exists" });
+
+    const hashedPassword = await bcrypt.hash("temp@123", 10);
+
+    const user = await User.create({
+      username,
+      email: email,
+      password: hashedPassword,
+      role: role, 
+      gym: gymId,
+      mustResetPassword: false,
+      phone,
+      address,  
+      isMember:true,
+      joinDate:new Date(),
+      expiryDate:expiryDate,
+    });
+
+    res.status(201).json({ message: `${role} added successfully`, user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error adding user to gym" });
+  }
+};
 const userLogin = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "Please fill all the fields",
-            });
-        }
-        const user = await User.findOne({ email:email });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found. Please register first",
-            });
-        }
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(401).json({
-                success: false,
-                message: "Invalid credentials",
-            });
-        }
-        const token = jwt.sign({ id: user._id,role:user.role}, process.env.JWT_SECRET, { expiresIn: '1d' });
+  try {
+    const { email, password } = req.body;
 
-        return res.status(200).json({
-            success: true,
-            message: "User logged in successfully",
-            token,
-            user: {
-                id: user._id,
-                role: user.role,
+    // 1. Check if user exists
+    const user = await User.findOne({ email: email });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
 
-            }
-        });
-
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: "Some error occured. Please try again",
-        });
+    // 2. Check if password is correct
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "Invalid credentials" });
+    if (user.mustResetPassword && user.role !== "admin") {
+      return res.status(200).json({
+        message: "Password reset required",
+        mustResetPassword: true,
+        userId: user._id,
+        email: user.email,
+      });
     }
-}
-// getall user
-const getAllUser = async (req, res) => {
-    try {
-        const user = await User.find();
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-        return res.status(200).json({
-            success: true,
-            message: "User fetched successfully",
-            user,
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: "Some error occured. Please try again",
-            error,
-        });
-    }
+    // 3. Create JWT token
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        gymId: user.gym,
+        role: user.role,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        _id: user._id,
+        name: user.username,
+        email: user.email,
+        role: user.role,
+        gym: user.gym,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error while logging in" });
+  }
 };
-//get user by id
-const getUserById = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!id) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide user id",
-            });
-        }
-        const user = await User.findById(id);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-        return res.status(200).json({
-            success: true,
-            message: "User fetched successfully",
-            user,
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: "Some error occured. Please try again",
-            error,
-        });
-    }
+
+const resetPassword = async (req, res) => {
+  const { userId, newPassword } = req.body;
+
+  const user = await User.findById(userId);
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+  user.password = hashedPassword;
+  user.mustResetPassword = false;
+  await user.save();
+
+  res.status(200).json({ message: "Password reset successful" });
 };
-//update user
-const updateUser = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const owner = req.user.id;
-        if (!id) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide user id",
-            });
-        }
-        if (id !== owner) {
-            return res.status(401).json({
-                success: false,
-                message: "You are not authorized to update this user",
-            });
-        }
-        const { username, email, password, role, phone, address } = req.body;
-        if (!username || !email || !password || !phone || !address) {
-            return res.status(400).json({
-                success: false,
-                message: "Please fill all the fields",
-            });
-        }
-        const user = await User.findByIdAndUpdate(id, {
-            username,
-            email,
-            password,
-            role,
-            phone,
-            address,
-        });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-        return res.status(200).json({
-            success: true,
-            message: "User updated successfully",
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: "Some error occured. Please try again",
-            error,
-        });
+const getGymMembers = async (req, res) => {
+  try {
+    const gymId = req.user.gymId;
+
+    // Find the gym and get the owner
+    const gym = await Gym.findById(gymId).select('owner');
+    if (!gym) return res.status(404).json({ message: "Gym not found" });
+
+    // Exclude the owner from the members list
+    const members = await User.find({
+      gym: gymId,
+      _id: { $ne: gym.owner },
+      
+    }).select('-password');
+
+    if (!members || members.length === 0) {
+      return res.status(404).json({ message: "No members found" });
     }
+    res.status(200).json(members);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error getting gym members" });
+  }
 };
-//delete user
-const deleteUser = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!id) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide user id",
-            });
-        }
-        const user = await User.findByIdAndDelete(id);
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-        return res.status(200).json({
-            success: true,
-            message: "User deleted successfully",
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: "Some error occured. Please try again",
-            error,
-        });
-    }
+const deleteMember = async (req, res) => {
+ try {
+  const { id } = req.params;
+  const member = await User.findByIdAndDelete(id);
+  if (!member) return res.status(404).json({ message: "Member not found" });
+  res.status(200).json({ message: "Member deleted successfully" });
+ } catch (error) {
+  console.error(error);
+  res.status(500).json({ message: "Error deleting member" });
+ }
 };
-// make user member
-const makeUserMember = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!id) {
-            return res.status(400).json({
-                success: false,
-                message: "Please provide user id",
-            });
-        }
-        const user = await User.findByIdAndUpdate(id, {
-            isMember: true,
-        });
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found",
-            });
-        }
-        return res.status(200).json({
-            success: true,
-            message: "User made member successfully",
-        });
-    } catch (error) {
-        console.error(error);
-        return res.status(500).json({
-            success: false,
-            message: "Some error occured. Please try again",
-            error,
-        });
-    }
-};  
+const getMemberById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const member = await User.findById(id);
+    if (!member) return res.status(404).json({ message: "Member not found" });
+    res.status(200).json(member);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error getting member" });
+  }
+};
+const editMember = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username, email, role, phone, address, expiryDate,isMember } = req.body;
+    const member = await User.findByIdAndUpdate(id, { username, email, role, phone, address, expiryDate,isMember });
+    if (!member) return res.status(404).json({ message: "Member not found" });
+    res.status(200).json({ message: "Member updated successfully" });
 
-
-
-
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error editing member" });
+  }
+};
 
 
 module.exports = {
-    userRegistration,
-    userLogin,
-    getAllUser,
-    getUserById,
-    updateUser,
-    deleteUser,
-    makeUserMember,
-    
-};
+  registerGymWithOwner,
+  addUserToGym,
+  userLogin,
+  resetPassword,
+  getGymMembers,
+  deleteMember,
+  editMember,
+  getMemberById,
+  };  

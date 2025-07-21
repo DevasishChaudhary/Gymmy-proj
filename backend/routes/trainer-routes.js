@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { trainerRegistration,getAllTrainer,getTrainerById,updateTrainer,deleteTrainer } = require('../controllers/trainer-controller');
+const { addTrainer, getTrainers, getTrainerById, deleteTrainer, editTrainer } = require('../controllers/trainer-controller');
 const authMiddleware = require('../middleware/auth-middleware'); // Importing the authentication middleware 
 
-router.post('/register',authMiddleware, trainerRegistration); // Route for trainer registration
-router.get('/all',authMiddleware, getAllTrainer); // Route for get all trainer
-router.get('/:id',authMiddleware, getTrainerById); // Route for get trainer by id
-router.put('/update/:id',authMiddleware, updateTrainer); // Route for update trainer
-router.delete('/delete/:id',authMiddleware, deleteTrainer); // Route for delete trainer
+router.post('/add-trainer', authMiddleware, addTrainer); // Route for adding a trainer
+router.get('/get-trainers', authMiddleware, getTrainers); // Route for getting all trainers
+router.get('/get-trainer/:id', authMiddleware, getTrainerById); // Route for getting a trainer by id
+router.delete('/delete-trainer/:id', authMiddleware, deleteTrainer); // Route for deleting a trainer
+router.put('/edit-trainer/:id', authMiddleware, editTrainer); // Route for editing a trainer
 
 module.exports = router;
